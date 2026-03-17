@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediBot Register</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif;}
+    body{background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .container{width:100%;max-width:440px;padding:20px;}
+    .card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,0.4);}
+    .logo{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:16px;}
+    .logo-icon{width:52px;height:52px;background:linear-gradient(135deg,#38bdf8,#818cf8);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;box-shadow:0 4px 20px rgba(56,189,248,0.4);}
+    .logo-text{font-size:1.6rem;font-weight:700;color:#fff;}
+    .logo-sub{font-size:0.75rem;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:28px;letter-spacing:0.05em;}
+    h2{font-size:1.3rem;font-weight:600;color:#f1f5f9;margin-bottom:6px;text-align:center;}
+    .sub{font-size:0.85rem;color:rgba(255,255,255,0.35);text-align:center;margin-bottom:24px;}
+    .field{margin-bottom:16px;}
+    label{display:block;font-size:0.82rem;font-weight:500;color:rgba(255,255,255,0.6);margin-bottom:7px;}
+    input{width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:13px 16px;color:#f1f5f9;font-size:0.93rem;outline:none;transition:all 0.2s;}
+    input:focus{border-color:rgba(56,189,248,0.5);background:rgba(56,189,248,0.05);box-shadow:0 0 0 3px rgba(56,189,248,0.1);}
+    input::placeholder{color:rgba(255,255,255,0.2);}
+    .help{font-size:0.72rem;color:rgba(255,255,255,0.2);margin-top:5px;}
+    .error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:12px 16px;color:#fca5a5;font-size:0.83rem;margin-bottom:18px;}
+    .btn{width:100%;background:linear-gradient(135deg,#38bdf8,#818cf8);border:none;border-radius:12px;padding:14px;color:#fff;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:8px;transition:all 0.2s;box-shadow:0 4px 20px rgba(56,189,248,0.3);}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(56,189,248,0.4);}
+    .login-link{text-align:center;font-size:0.85rem;color:rgba(255,255,255,0.35);margin-top:20px;}
+    .login-link a{color:#38bdf8;text-decoration:none;font-weight:500;}
+    .login-link a:hover{color:#7dd3fc;}
+    .divider{display:flex;align-items:center;gap:12px;margin:20px 0;}
+    .divider hr{flex:1;border:none;border-top:1px solid rgba(255,255,255,0.08);}
+    .divider span{font-size:0.75rem;color:rgba(255,255,255,0.2);}
+    .features{display:flex;gap:16px;margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);}
+    .feat{flex:1;text-align:center;}
+    .feat-icon{font-size:1.1rem;margin-bottom:4px;}
+    .feat-text{font-size:0.68rem;color:rgba(255,255,255,0.2);}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">💊</div>
+      <div class="logo-text">MediBot</div>
+    </div>
+    <div class="logo-sub">AI MEDICAL ASSISTANT</div>
+
+    <h2>Create your account</h2>
+    <div class="sub">Join MediBot and get your personal medical assistant</div>
+
+    {% if form.errors %}
+    <div class="error">
+      ❌ Please fix the errors below:
+      {% for field in form %}
+        {% for error in field.errors %}
+          <br>• {{ error }}
+        {% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}
+        <br>• {{ error }}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Choose a username"
+               value="{{ form.username.value|default:'' }}" autofocus/>
+      </div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" name="email" placeholder="Enter your email address"
+               value="{{ form.email.value|default:'' }}"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password1" placeholder="Create a strong password"/>
+        <div class="help">Min 8 characters with letters and numbers</div>
+      </div>
+      <div class="field">
+        <label>Confirm Password</label>
+        <input type="password" name="password2" placeholder="Repeat your password"/>
+      </div>
+      <button type="submit" class="btn">🚀 Create Account</button>
+    </form>
+
+    <div class="divider"><hr/><span>or</span><hr/></div>
+    <div class="login-link">Already have an account? <a href="/login/">Sign in here</a></div>
+
+    <div class="features">
+      <div class="feat"><div class="feat-icon">🔒</div><div class="feat-text">Secure Login</div></div>
+      <div class="feat"><div class="feat-icon">💬</div><div class="feat-text">Your History</div></div>
+      <div class="feat"><div class="feat-icon">📊</div><div class="feat-text">Personal Data</div></div>
+      <div class="feat"><div class="feat-icon">💊</div><div class="feat-text">AI Medical</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
