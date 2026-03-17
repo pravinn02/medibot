@@ -1,0 +1,13 @@
+env/
+__pycache__/
+*.pyc
+*.pyo
+.env
+faiss_index/
+pdfs/
+staticfiles/
+db.sqlite3
+*.log
+medibot/__pycache__/
+chat/__pycache__/
+chat/migrations/__pycache__/
