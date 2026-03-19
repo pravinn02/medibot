@@ -1,3 +1,8 @@
+notepad .gitignore
+```
+
+Make sure it contains:
+```
 env/
 __pycache__/
 *.pyc
@@ -8,6 +13,3 @@ pdfs/
 staticfiles/
 db.sqlite3
 *.log
-medibot/__pycache__/
-chat/__pycache__/
-chat/migrations/__pycache__/

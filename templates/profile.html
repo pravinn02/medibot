@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile — MediBot AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif;}
+    body{background:#0f172a;min-height:100vh;color:#e2e8f0;}
+
+    /* NAVBAR */
+    .nav{padding:14px 40px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);backdrop-filter:blur(10px);position:sticky;top:0;z-index:100;}
+    .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+    .nav-logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#38bdf8,#818cf8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;}
+    .nav-logo-text{font-size:1.1rem;font-weight:700;color:#fff;}
+    .nav-links{display:flex;align-items:center;gap:12px;}
+    .nav-link{font-size:0.85rem;color:rgba(255,255,255,0.5);text-decoration:none;padding:7px 14px;border-radius:10px;transition:all 0.2s;}
+    .nav-link:hover{background:rgba(255,255,255,0.08);color:#fff;}
+    .nav-link.active{background:rgba(56,189,248,0.1);color:#38bdf8;}
+    .logout-form button{font-size:0.85rem;color:rgba(255,255,255,0.4);background:transparent;border:1px solid rgba(255,255,255,0.1);padding:7px 14px;border-radius:10px;cursor:pointer;transition:all 0.2s;}
+    .logout-form button:hover{background:rgba(239,68,68,0.15);color:#fca5a5;border-color:rgba(239,68,68,0.2);}
+
+    /* MAIN */
+    .container{max-width:800px;margin:0 auto;padding:40px 20px;}
+
+    /* PROFILE HEADER */
+    .profile-header{display:flex;align-items:center;gap:24px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:32px;margin-bottom:28px;}
+    .profile-avatar{width:80px;height:80px;background:linear-gradient(135deg,#38bdf8,#818cf8);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:#fff;box-shadow:0 8px 24px rgba(56,189,248,0.3);flex-shrink:0;}
+    .profile-info{flex:1;}
+    .profile-name{font-size:1.5rem;font-weight:700;color:#f1f5f9;margin-bottom:4px;}
+    .profile-email{font-size:0.9rem;color:rgba(255,255,255,0.4);margin-bottom:12px;}
+    .profile-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.2);color:#38bdf8;font-size:0.75rem;font-weight:500;padding:4px 12px;border-radius:20px;}
+    .joined{font-size:0.8rem;color:rgba(255,255,255,0.25);margin-top:8px;}
+
+    /* STATS */
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+    .stat-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:24px;text-align:center;transition:all 0.2s;}
+    .stat-card:hover{border-color:rgba(56,189,248,0.3);background:rgba(56,189,248,0.05);}
+    .stat-icon{font-size:1.8rem;margin-bottom:10px;}
+    .stat-value{font-size:2rem;font-weight:700;color:#f1f5f9;margin-bottom:4px;}
+    .stat-label{font-size:0.78rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.05em;}
+
+    /* RECENT ACTIVITY */
+    .section-title{font-size:1rem;font-weight:600;color:#f1f5f9;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+    .activity-list{display:flex;flex-direction:column;gap:10px;}
+    .activity-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:14px;transition:all 0.2s;}
+    .activity-item:hover{border-color:rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);}
+    .activity-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+    .activity-icon.q{background:rgba(56,189,248,0.1);}
+    .activity-icon.r{background:rgba(129,140,248,0.1);}
+    .activity-text{flex:1;min-width:0;}
+    .activity-q{font-size:0.88rem;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .activity-time{font-size:0.72rem;color:rgba(255,255,255,0.25);margin-top:3px;}
+    .empty{text-align:center;padding:40px;color:rgba(255,255,255,0.25);font-size:0.9rem;}
+
+    /* BACK BUTTON */
+    .back-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#38bdf8,#818cf8);color:#fff;text-decoration:none;padding:12px 24px;border-radius:12px;font-size:0.88rem;font-weight:600;transition:all 0.2s;box-shadow:0 4px 16px rgba(56,189,248,0.3);margin-top:24px;}
+    .back-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(56,189,248,0.4);}
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="nav">
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">💊</div>
+    <span class="nav-logo-text">MediBot</span>
+  </a>
+  <div class="nav-links">
+    <a href="/" class="nav-link">💬 Chat</a>
+    <a href="/profile/" class="nav-link active">👤 Profile</a>
+    <form method="post" action="/logout/" class="logout-form">
+      {% csrf_token %}
+      <button type="submit">Sign Out</button>
+    </form>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- Profile Header -->
+  <div class="profile-header">
+    <div class="profile-avatar">{{ request.user.username|first|upper }}</div>
+    <div class="profile-info">
+      <div class="profile-name">{{ request.user.username }}</div>
+      <div class="profile-email">📧 {{ request.user.email|default:"No email set" }}</div>
+      <div class="profile-badge">💊 MediBot User</div>
+      <div class="joined">📅 Joined: {{ request.user.date_joined|date:"F j, Y" }}</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-icon">💬</div>
+      <div class="stat-value">{{ total_questions }}</div>
+      <div class="stat-label">Questions Asked</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📋</div>
+      <div class="stat-value">{{ total_reports }}</div>
+      <div class="stat-label">Reports Uploaded</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏥</div>
+      <div class="stat-value">{{ total_questions|add:total_reports }}</div>
+      <div class="stat-label">Total Interactions</div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="section-title">🕐 Recent Activity</div>
+  <div class="activity-list">
+    {% if recent %}
+      {% for item in recent %}
+      <div class="activity-item">
+        <div class="activity-icon {% if '[Report Upload]' in item.question %}r{% else %}q{% endif %}">
+          {% if '[Report Upload]' in item.question %}📎{% else %}💬{% endif %}
+        </div>
+        <div class="activity-text">
+          <div class="activity-q">{{ item.question }}</div>
+          <div class="activity-time">{{ item.created_at|date:"M j, Y — g:i A" }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No activity yet. Start asking medical questions! 💊</div>
+    {% endif %}
+  </div>
+
+  <a href="/" class="back-btn">💬 Back to Chat</a>
+
+</div>
+</body>
+</html>

@@ -14,10 +14,29 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.core.mail import send_mail
 from django.conf import settings as django_settings
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+import json as json_lib
 from .rag import ask_medibot, llm
 from .models import ChatHistory
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+
+# ── Trigger Words ──────────────────────────────────────────────
+GREETINGS = ['hi', 'hello', 'hey', 'good morning', 'good evening',
+             'good afternoon', 'namaste', 'hii', 'helo', 'howdy',
+             'sup', 'greetings', 'good night']
+
+SYMPTOM_TRIGGERS = ['i have', 'i am having', 'i feel', 'i am feeling',
+                    'suffering from', 'experiencing', 'my symptoms are',
+                    'symptoms:', 'i got', 'having', 'mujhe', 'mera',
+                    'i am suffering', "i've been"]
+
+MEDICINE_TRIGGERS = ['tablet', 'medicine', 'drug', 'capsule', 'syrup',
+                     'dose', 'dosage', 'injection', 'cream', 'ointment',
+                     'paracetamol', 'ibuprofen', 'aspirin', 'amoxicillin',
+                     'how to take', 'side effects of', 'uses of']
 
 
 # ── Register Form ──────────────────────────────────────────────
@@ -73,6 +92,44 @@ Simple Summary:'''
     return response.content
 
 
+def send_welcome_email(user):
+    """Send a welcome email to newly registered user."""
+    try:
+        send_mail(
+            subject='Welcome to MediBot AI 💊',
+            message=f'''Hi {user.username}!
+
+Welcome to MediBot — your AI-powered medical assistant! 🎉
+
+Your account has been created successfully.
+
+📧 Email    : {user.email}
+👤 Username : {user.username}
+
+You can now:
+✅ Ask any medical question
+✅ Check symptoms and get possible conditions
+✅ Get medicine dosage and side effect info
+✅ Upload medical reports for a simple summary
+
+👉 Login here: http://127.0.0.1:8000/login/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Stay healthy and take care!
+— MediBot AI Team 💊
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is an automated message. Please do not reply.''',
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"[MediBot] Email failed: {e}")
+        return False
+
+
 # ── Views ──────────────────────────────────────────────────────
 @login_required
 def index(request):
@@ -85,10 +142,56 @@ def index(request):
 def ask(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        question = data.get('question', '')
+        question = data.get('question', '').strip()
         if not question:
             return JsonResponse({'error': 'No question'}, status=400)
-        answer, sources = ask_medibot(question)
+
+        q_lower = question.lower()
+
+        # ── Greeting ──
+        if q_lower in GREETINGS:
+            answer = (
+                f"👋 Hello, **{request.user.username}**! Welcome to MediBot.\n\n"
+                f"I'm your AI-powered medical assistant. How can I help you today?\n\n"
+                f"You can ask me about:\n"
+                f"1. **Symptoms** of any disease\n"
+                f"2. **Treatment** options\n"
+                f"3. **Medicine** suggestions based on symptoms\n"
+                f"4. **Upload** a medical report for a simple summary\n\n"
+                f"What would you like to know? 💊"
+            )
+            sources = []
+
+        # ── Symptom Checker ──
+        elif any(trigger in q_lower for trigger in SYMPTOM_TRIGGERS):
+            answer, sources = ask_medibot(
+                f"Patient reports: {question}\n\n"
+                f"As MediBot, analyze these symptoms carefully and provide:\n"
+                f"1. **Possible Conditions** — List 3-5 possible diseases or conditions that match these symptoms\n"
+                f"2. **Why These Match** — For each condition, briefly explain why the symptoms match\n"
+                f"3. **Recommended Doctor** — What type of specialist should the patient see\n"
+                f"4. **Immediate Home Care** — Safe home remedies or actions to take right now\n"
+                f"5. **Red Flag Warnings** — Any symptoms that would require emergency care\n\n"
+                f"Use simple language. Always recommend consulting a doctor."
+            )
+
+        # ── Medicine Info ──
+        elif any(trigger in q_lower for trigger in MEDICINE_TRIGGERS):
+            answer, sources = ask_medibot(
+                f"{question}\n\n"
+                f"Provide complete medicine information including:\n"
+                f"1. **What it is used for** — Main uses and conditions it treats\n"
+                f"2. **Dosage** — Standard adult and child doses\n"
+                f"3. **How to take** — With or without food, timing\n"
+                f"4. **Side Effects** — Common and serious side effects\n"
+                f"5. **Precautions** — Who should avoid it, drug interactions\n"
+                f"6. **Alternatives** — Similar medicines if available"
+            )
+
+        # ── General Medical Question ──
+        else:
+            answer, sources = ask_medibot(question)
+
         ChatHistory.objects.create(
             user=request.user,
             question=question,
@@ -143,34 +246,157 @@ def register(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # Fix: specify backend explicitly to avoid multiple backends error
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
-            # Send welcome email
-            try:
-                send_mail(
-                    subject='Welcome to MediBot AI 💊',
-                    message=f'''Hi {user.username},
-
-Welcome to MediBot — your AI-powered medical assistant!
-
-You can now:
-- Ask any medical question
-- Get symptom-based medicine suggestions
-- Upload medical reports for simple summaries
-
-Visit: http://127.0.0.1:8000
-
-Stay healthy!
-— MediBot AI Team''',
-                    from_email=django_settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[user.email],
-                    fail_silently=True,
-                )
-            except Exception:
-                pass  # Don't break registration if email fails
+            # Send welcome email to new user
+            email_sent = send_welcome_email(user)
+            if email_sent:
+                print(f"[MediBot] Welcome email sent to {user.email}")
+            else:
+                print(f"[MediBot] Failed to send email to {user.email}")
 
             return redirect('/')
     else:
         form = RegisterForm()
     return render(request, 'register.html', {'form': form})
+
+
+@login_required
+def profile(request):
+    total_questions = ChatHistory.objects.filter(
+        user=request.user
+    ).exclude(question__startswith='[Report Upload]').count()
+    total_reports = ChatHistory.objects.filter(
+        user=request.user,
+        question__startswith='[Report Upload]'
+    ).count()
+    recent = ChatHistory.objects.filter(
+        user=request.user
+    ).order_by('-created_at')[:5]
+    return render(request, 'profile.html', {
+        'total_questions': total_questions,
+        'total_reports': total_reports,
+        'recent': recent,
+    })
+
+
+@staff_member_required
+def analytics(request):
+    # Total stats
+    total_users = User.objects.count()
+    total_questions = ChatHistory.objects.exclude(question__startswith='[Report Upload]').count()
+    total_reports = ChatHistory.objects.filter(question__startswith='[Report Upload]').count()
+    total_interactions = ChatHistory.objects.count()
+
+    # Most active users (top 5)
+    top_users = (
+        ChatHistory.objects.values('user__username')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:5]
+    )
+
+    # Daily activity last 7 days
+    from datetime import date, timedelta
+    today = date.today()
+    days = [(today - timedelta(days=i)) for i in range(6, -1, -1)]
+    daily_counts = (
+        ChatHistory.objects
+        .filter(created_at__date__gte=today - timedelta(days=6))
+        .annotate(day=TruncDate('created_at'))
+        .values('day')
+        .annotate(count=Count('id'))
+        .order_by('day')
+    )
+    day_map = {str(d['day']): d['count'] for d in daily_counts}
+    chart_labels = [d.strftime('%b %d') for d in days]
+    chart_data = [day_map.get(str(d), 0) for d in days]
+
+    # Recent 10 interactions
+    recent = ChatHistory.objects.select_related('user').order_by('-created_at')[:10]
+
+    return render(request, 'analytics.html', {
+        'total_users': total_users,
+        'total_questions': total_questions,
+        'total_reports': total_reports,
+        'total_interactions': total_interactions,
+        'top_users': top_users,
+        'chart_labels': json_lib.dumps(chart_labels),
+        'chart_data': json_lib.dumps(chart_data),
+        'recent': recent,
+    })
+
+
+
+@csrf_exempt
+def password_reset_request(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        try:
+            user = User.objects.get(email=email)
+            # Generate reset token
+            from django.contrib.auth.tokens import default_token_generator
+            from django.utils.http import urlsafe_base64_encode
+            from django.utils.encoding import force_bytes
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_link = f"http://127.0.0.1:8000/password-reset-confirm/{uid}/{token}/"
+            send_mail(
+                subject='MediBot — Password Reset Request 🔑',
+                message=f'''Hi {user.username},
+
+We received a request to reset your MediBot password.
+
+Click the link below to reset your password:
+👉 {reset_link}
+
+This link expires in 24 hours.
+
+If you did not request this, please ignore this email.
+
+— MediBot AI Team 💊''',
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            return JsonResponse({'success': True})
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'No account found with this email.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'error': 'POST only'}, status=405)
+
+
+
+
+@login_required
+def contact(request):
+    if request.method == 'POST':
+        subject = request.POST.get('subject', '').strip()
+        message = request.POST.get('message', '').strip()
+
+        if not subject or not message:
+            return render(request, 'contact.html', {'error': 'Please fill in all fields.'})
+
+        try:
+            send_mail(
+                subject=f'[MediBot Contact] {subject}',
+                message=f'''New message from MediBot user:
+
+👤 Username : {request.user.username}
+📧 Email    : {request.user.email}
+📝 Subject  : {subject}
+
+Message:
+{message}
+
+— Sent from MediBot Contact Form''',
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
+                recipient_list=['landagepravin505@gmail.com'],
+                fail_silently=False,
+            )
+            return render(request, 'contact.html', {'success': True})
+        except Exception as e:
+            return render(request, 'contact.html', {'error': str(e)})
+
+    return render(request, 'contact.html')
