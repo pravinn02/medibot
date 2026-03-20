@@ -1,0 +1,170 @@
+{
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "vector_store": "FAISS",
+  "retriever_k": 6,
+  "overall_hit_rate": "100.0%",
+  "total_questions": 10,
+  "results": [
+    {
+      "question": "What are the symptoms of malaria?",
+      "matched_keywords": [
+        "fever",
+        "chills",
+        "malaria",
+        "plasmodium"
+      ],
+      "missing_keywords": [],
+      "keyword_hit_rate": 100.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    },
+    {
+      "question": "What is the dosage of paracetamol for adults?",
+      "matched_keywords": [
+        "paracetamol",
+        "dose",
+        "adult"
+      ],
+      "missing_keywords": [
+        "500mg",
+        "1g"
+      ],
+      "keyword_hit_rate": 60.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf",
+        "WHO-MHP-HPS-EML-2023.02-eng.pdf"
+      ]
+    },
+    {
+      "question": "How is tuberculosis diagnosed?",
+      "matched_keywords": [
+        "tuberculosis",
+        "TB",
+        "sputum",
+        "diagnosis"
+      ],
+      "missing_keywords": [
+        "chest x-ray"
+      ],
+      "keyword_hit_rate": 80.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    },
+    {
+      "question": "What are the side effects of ibuprofen?",
+      "matched_keywords": [
+        "ibuprofen",
+        "side effect",
+        "NSAIDs"
+      ],
+      "missing_keywords": [
+        "gastric",
+        "stomach"
+      ],
+      "keyword_hit_rate": 60.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    },
+    {
+      "question": "What are symptoms of meningitis?",
+      "matched_keywords": [
+        "meningitis",
+        "neck stiffness",
+        "headache",
+        "fever",
+        "photophobia"
+      ],
+      "missing_keywords": [],
+      "keyword_hit_rate": 100.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    },
+    {
+      "question": "What is the treatment for hypertension?",
+      "matched_keywords": [
+        "hypertension",
+        "blood pressure",
+        "antihypertensive",
+        "treatment"
+      ],
+      "missing_keywords": [],
+      "keyword_hit_rate": 100.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    },
+    {
+      "question": "What are signs of appendicitis?",
+      "matched_keywords": [
+        "appendicitis",
+        "abdominal pain"
+      ],
+      "missing_keywords": [
+        "nausea",
+        "right iliac"
+      ],
+      "keyword_hit_rate": 50.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    },
+    {
+      "question": "How is diabetes managed?",
+      "matched_keywords": [
+        "diabetes",
+        "insulin",
+        "glucose",
+        "blood sugar",
+        "HbA1c"
+      ],
+      "missing_keywords": [],
+      "keyword_hit_rate": 100.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    },
+    {
+      "question": "What is the dosage of amoxicillin for children?",
+      "matched_keywords": [
+        "amoxicillin",
+        "children",
+        "child",
+        "dose",
+        "mg/kg"
+      ],
+      "missing_keywords": [],
+      "keyword_hit_rate": 100.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf"
+      ]
+    },
+    {
+      "question": "What are the symptoms of pneumonia?",
+      "matched_keywords": [
+        "pneumonia",
+        "cough",
+        "fever",
+        "chest",
+        "breathing"
+      ],
+      "missing_keywords": [],
+      "keyword_hit_rate": 100.0,
+      "retrieved_sources": [
+        "clinical-guidelines-diagnosis-and-treatment-manual-medecins-sans-frontieres-616.pdf",
+        "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf"
+      ]
+    }
+  ]
+}

@@ -17,6 +17,7 @@ from django.conf import settings as django_settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count
 from django.db.models.functions import TruncDate
+from django.core.cache import cache
 import json as json_lib
 from .rag import ask_medibot, llm
 from .models import ChatHistory
@@ -28,6 +29,14 @@ GREETINGS = ['hi', 'hello', 'hey', 'good morning', 'good evening',
              'good afternoon', 'namaste', 'hii', 'helo', 'howdy',
              'sup', 'greetings', 'good night']
 
+DIRECT_MEDICINE_TRIGGERS = [
+    'which tablet', 'which medicine', 'which drug',
+    'what tablet', 'what medicine', 'suggest tablet',
+    'suggest medicine', 'recommend tablet', 'recommend medicine',
+    'which painkiller', 'what should i take', 'what can i take',
+    'which pill', 'what pill',
+]
+
 SYMPTOM_TRIGGERS = ['i have', 'i am having', 'i feel', 'i am feeling',
                     'suffering from', 'experiencing', 'my symptoms are',
                     'symptoms:', 'i got', 'having', 'mujhe', 'mera',
@@ -37,6 +46,21 @@ MEDICINE_TRIGGERS = ['tablet', 'medicine', 'drug', 'capsule', 'syrup',
                      'dose', 'dosage', 'injection', 'cream', 'ointment',
                      'paracetamol', 'ibuprofen', 'aspirin', 'amoxicillin',
                      'how to take', 'side effects of', 'uses of']
+
+SAFETY_TRIGGERS = ['is safe', 'is it safe', 'safe to take', 'safe during',
+                   'is dangerous', 'is it dangerous', 'can i take',
+                   'can we take', 'safe for', 'okay to take', 'ok to take',
+                   'safe in pregnancy', 'safe for kids', 'safe for children']
+
+
+# ── Rate Limiting ──────────────────────────────────────────────
+def is_rate_limited(user_id):
+    key = f"rate_limit_{user_id}"
+    requests = cache.get(key, 0)
+    if requests >= 10:
+        return True
+    cache.set(key, requests + 1, timeout=60)
+    return False
 
 
 # ── Register Form ──────────────────────────────────────────────
@@ -75,7 +99,7 @@ def extract_text_from_image(file):
 
 def summarize_report(text):
     from langchain_core.messages import HumanMessage
-    prompt = f'''You are MediBot, a medical assistant.
+    prompt = f'''You are MediBot, a warm and friendly medical assistant.
 A user has uploaded their medical report. Read it carefully and summarize it in very simple language that a non-medical person can understand.
 
 Include:
@@ -83,6 +107,8 @@ Include:
 2. Key findings in simple words
 3. Any abnormal values and what they mean
 4. What the user should do next
+
+Be conversational and reassuring, not clinical.
 
 Medical Report:
 {text[:3000]}
@@ -93,7 +119,6 @@ Simple Summary:'''
 
 
 def send_welcome_email(user):
-    """Send a welcome email to newly registered user."""
     try:
         send_mail(
             subject='Welcome to MediBot AI 💊',
@@ -143,24 +168,58 @@ def ask(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         question = data.get('question', '').strip()
+
         if not question:
             return JsonResponse({'error': 'No question'}, status=400)
 
+        if len(question) > 500:
+            return JsonResponse({'error': 'Question too long. Please keep it under 500 characters.'}, status=400)
+
+        if is_rate_limited(request.user.id):
+            return JsonResponse({'error': '⚠️ Too many requests. Please wait a minute before asking again.'}, status=429)
+
         q_lower = question.lower()
+
+        # ── Build conversation history (last 5 messages) ──
+        recent_history = ChatHistory.objects.filter(
+            user=request.user
+        ).order_by('-created_at')[:5]
+
+        history_text = ""
+        for item in reversed(recent_history):
+            history_text += f"User: {item.question}\nMediBot: {item.answer[:300]}...\n\n"
 
         # ── Greeting ──
         if q_lower in GREETINGS:
             answer = (
-                f"👋 Hello, **{request.user.username}**! Welcome to MediBot.\n\n"
-                f"I'm your AI-powered medical assistant. How can I help you today?\n\n"
-                f"You can ask me about:\n"
-                f"1. **Symptoms** of any disease\n"
-                f"2. **Treatment** options\n"
-                f"3. **Medicine** suggestions based on symptoms\n"
-                f"4. **Upload** a medical report for a simple summary\n\n"
-                f"What would you like to know? 💊"
+                f"Hey {request.user.username}! 👋 Great to see you.\n\n"
+                f"I'm here to help with anything medical — symptoms, treatments, medicines, or just making sense of a report you got. What's going on?"
             )
             sources = []
+
+        # ── Direct Medicine Request ──
+        elif any(trigger in q_lower for trigger in DIRECT_MEDICINE_TRIGGERS):
+            answer, sources = ask_medibot(
+                f"{question}\n\n"
+                f"The user is asking directly for a medicine recommendation. "
+                f"Give a SHORT, friendly, direct answer (3-5 sentences max):\n"
+                f"1. Name the most common OTC medicine for this (e.g. Paracetamol, Ibuprofen)\n"
+                f"2. Basic dosage for adults\n"
+                f"3. One key caution\n"
+                f"4. When to see a doctor instead\n"
+                f"No full diagnosis. No list of possible conditions. Just answer the question asked.",
+                history=history_text
+            )
+
+        # ── Safety Question ──
+        elif any(trigger in q_lower for trigger in SAFETY_TRIGGERS):
+            answer, sources = ask_medibot(
+                f"{question}\n\n"
+                f"Give a short, conversational answer (2-4 sentences max). "
+                f"Is it safe or not? Any key warnings? When to consult a doctor? "
+                f"No need for full medicine breakdown — just a friendly direct answer.",
+                history=history_text
+            )
 
         # ── Symptom Checker ──
         elif any(trigger in q_lower for trigger in SYMPTOM_TRIGGERS):
@@ -172,7 +231,8 @@ def ask(request):
                 f"3. **Recommended Doctor** — What type of specialist should the patient see\n"
                 f"4. **Immediate Home Care** — Safe home remedies or actions to take right now\n"
                 f"5. **Red Flag Warnings** — Any symptoms that would require emergency care\n\n"
-                f"Use simple language. Always recommend consulting a doctor."
+                f"Use simple language. Always recommend consulting a doctor.",
+                history=history_text
             )
 
         # ── Medicine Info ──
@@ -185,12 +245,13 @@ def ask(request):
                 f"3. **How to take** — With or without food, timing\n"
                 f"4. **Side Effects** — Common and serious side effects\n"
                 f"5. **Precautions** — Who should avoid it, drug interactions\n"
-                f"6. **Alternatives** — Similar medicines if available"
+                f"6. **Alternatives** — Similar medicines if available",
+                history=history_text
             )
 
         # ── General Medical Question ──
         else:
-            answer, sources = ask_medibot(question)
+            answer, sources = ask_medibot(question, history=history_text)
 
         ChatHistory.objects.create(
             user=request.user,
@@ -247,14 +308,11 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-
-            # Send welcome email to new user
             email_sent = send_welcome_email(user)
             if email_sent:
                 print(f"[MediBot] Welcome email sent to {user.email}")
             else:
                 print(f"[MediBot] Failed to send email to {user.email}")
-
             return redirect('/')
     else:
         form = RegisterForm()
@@ -282,20 +340,17 @@ def profile(request):
 
 @staff_member_required
 def analytics(request):
-    # Total stats
     total_users = User.objects.count()
     total_questions = ChatHistory.objects.exclude(question__startswith='[Report Upload]').count()
     total_reports = ChatHistory.objects.filter(question__startswith='[Report Upload]').count()
     total_interactions = ChatHistory.objects.count()
 
-    # Most active users (top 5)
     top_users = (
         ChatHistory.objects.values('user__username')
         .annotate(count=Count('id'))
         .order_by('-count')[:5]
     )
 
-    # Daily activity last 7 days
     from datetime import date, timedelta
     today = date.today()
     days = [(today - timedelta(days=i)) for i in range(6, -1, -1)]
@@ -311,7 +366,6 @@ def analytics(request):
     chart_labels = [d.strftime('%b %d') for d in days]
     chart_data = [day_map.get(str(d), 0) for d in days]
 
-    # Recent 10 interactions
     recent = ChatHistory.objects.select_related('user').order_by('-created_at')[:10]
 
     return render(request, 'analytics.html', {
@@ -326,21 +380,29 @@ def analytics(request):
     })
 
 
-
 @csrf_exempt
 def password_reset_request(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        email = data.get('email', '').strip()
         try:
-            user = User.objects.get(email=email)
-            # Generate reset token
+            data = json.loads(request.body)
+            email = data.get('email', '').strip()
+
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email is required.'})
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'No account found with this email.'})
+
             from django.contrib.auth.tokens import default_token_generator
             from django.utils.http import urlsafe_base64_encode
             from django.utils.encoding import force_bytes
+
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             reset_link = f"http://127.0.0.1:8000/password-reset-confirm/{uid}/{token}/"
+
             send_mail(
                 subject='MediBot — Password Reset Request 🔑',
                 message=f'''Hi {user.username},
@@ -360,13 +422,11 @@ If you did not request this, please ignore this email.
                 fail_silently=False,
             )
             return JsonResponse({'success': True})
-        except User.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'No account found with this email.'})
+
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
+
     return JsonResponse({'error': 'POST only'}, status=405)
-
-
 
 
 @login_required
@@ -400,3 +460,11 @@ Message:
             return render(request, 'contact.html', {'error': str(e)})
 
     return render(request, 'contact.html')
+
+
+def error_404(request, exception):
+    return render(request, '404.html', status=404)
+
+
+def error_500(request):
+    return render(request, '500.html', status=500)

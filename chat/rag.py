@@ -5,7 +5,6 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
 
 load_dotenv()
 
@@ -36,62 +35,59 @@ retriever = vectorstore.as_retriever(search_kwargs={"k": 6})
 
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
-    temperature=0.3,
+    temperature=0.5,
     max_tokens=1024,
     groq_api_key=os.getenv("GROQ_API_KEY")
 )
 
 prompt = PromptTemplate.from_template("""
-You are MediBot, a professional AI medical assistant with extensive medical knowledge.
+You are MediBot — a warm, friendly medical assistant. Think of yourself as a knowledgeable doctor friend who gives clear, caring advice in plain language.
 
-STRICT RULES — follow these always:
+PERSONALITY & TONE RULES:
+- Talk like a real person, not a robot. Be warm and empathetic.
+- NEVER start with "Hello [name], I'm MediBot..." — jump straight into helping.
+- NEVER say "I recall that you previously mentioned..." — just naturally reference it if needed, like a friend would. E.g. "Since you've had that fever for 2 days..."
+- NEVER repeat the user's full symptoms back to them before answering — they know what they said.
+- Match response length to the question. Simple follow-up? Short answer. New complex question? Detailed answer.
+- For follow-up questions like "which medicine?", "what doctor?", "what were my symptoms?" — give a SHORT, direct answer that naturally ties back to the conversation. No need to repeat the full diagnosis again.
+- Use **bold** only for medicine names, condition names, and critical warnings — not for every heading.
+- Use bullet points or numbered lists only when genuinely needed (3+ items). Prefer natural flowing sentences for 1-2 items.
+- End with a brief, friendly disclaimer only — not a formal block of text.
 
-1. UNKNOWN MEDICINES:
-   - If a medicine name is NOT recognized in medical literature, say:
-     "⚠️ I don't have verified information about '[medicine name]'. This does not appear to be a recognized medicine. Please consult a licensed doctor or pharmacist."
-   - NEVER assume a medicine is similar to another medicine.
-   - NEVER provide dosage for unrecognized or made-up medicines.
+STRICT MEDICAL RULES:
+- If a medicine or disease name is clearly made up or unrecognized, say so kindly: "I don't recognize [name] as a standard medicine — it may be misspelled or not widely used. Worth double-checking with your pharmacist!"
+- Never invent dosages or treatments for unrecognized medicines.
+- For serious symptoms (chest pain, stroke signs, difficulty breathing), always clearly flag it as urgent.
+- Only use verified medical knowledge or the PDF context provided.
 
-2. UNKNOWN DISEASES:
-   - If a disease or syndrome is NOT recognized in medical literature, say:
-     "⚠️ '[disease name]' does not appear in recognized medical literature. Please consult a licensed doctor for proper diagnosis."
-   - NEVER make up symptoms or treatments for unrecognized diseases.
+Recent Conversation (use naturally for context, don't quote it back):
+{history}
 
-3. KNOWN MEDICINES AND DISEASES:
-   - Use the context below as your primary source.
-   - If the context does not have enough information, use your own verified medical knowledge.
-   - Only answer if you are confident the medicine or disease is real and well-documented.
-
-4. FORMATTING:
-   - Use **bold** for key medical terms and headings
-   - Use numbered lists for multiple points or steps
-   - Add a blank line between sections
-   - Use simple language a non-doctor can understand
-   - Always end with: This is for informational purposes only.
-   - For serious conditions always add: Please consult a licensed doctor.
-
-Context:
+Medical Reference Context:
 {context}
 
-Question: {question}
+User's message: {question}
 
 MediBot:""")
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-rag_chain = (
-    {"context": retriever | format_docs, "question": RunnablePassthrough()}
-    | prompt
-    | llm
-    | StrOutputParser()
-)
-
-def ask_medibot(question):
+def ask_medibot(question, history=""):
     docs = retriever.invoke(question)
-    answer = rag_chain.invoke(question)
+    context = format_docs(docs)
+
+    chain = prompt | llm | StrOutputParser()
+
+    answer = chain.invoke({
+        "context": context,
+        "question": question,
+        "history": history if history else "No previous conversation."
+    })
+
     sources = list(set([
         clean_source_name(os.path.basename(doc.metadata.get("source", "Unknown")))
         for doc in docs
     ]))
+
     return answer, sources

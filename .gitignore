@@ -1,15 +1,23 @@
-notepad .gitignore
-```
-
-Make sure it contains:
-```
+# Python
 env/
 __pycache__/
 *.pyc
 *.pyo
-.env
-faiss_index/
-pdfs/
-staticfiles/
+*.pyd
+.Python
+
+# Django
 db.sqlite3
 *.log
+staticfiles/
+
+# Environment
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
