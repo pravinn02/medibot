@@ -63,6 +63,20 @@ def is_rate_limited(user_id):
     return False
 
 
+# ── Follow-up Suggestions ──────────────────────────────────────
+def generate_followup_suggestions(question, q_lower):
+    if any(w in q_lower for w in ['symptom', 'i have', 'i feel', 'fever', 'pain', 'headache']):
+        return "• Which medicine should I take?\n• What doctor should I visit?\n• What home remedies can I try?"
+    elif any(w in q_lower for w in ['medicine', 'tablet', 'drug', 'dosage', 'paracetamol', 'ibuprofen']):
+        return "• Is this safe during pregnancy?\n• What are the side effects?\n• Can I take this on empty stomach?"
+    elif any(w in q_lower for w in ['depression', 'sad', 'anxiety', 'mental', 'stress', 'lonely']):
+        return "• How is depression treated?\n• Which doctor should I see?\n• Are there home remedies for stress?"
+    elif any(w in q_lower for w in ['child', 'baby', 'infant', 'kid']):
+        return "• What is the correct dose for my child's age?\n• When should I take my child to the doctor?\n• What home care can I give?"
+    else:
+        return ""
+
+
 # ── Register Form ──────────────────────────────────────────────
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(
@@ -180,10 +194,10 @@ def ask(request):
 
         q_lower = question.lower()
 
-        # ── Build conversation history (last 5 messages) ──
+        # ── Build conversation history (last 10 messages) ──
         recent_history = ChatHistory.objects.filter(
             user=request.user
-        ).order_by('-created_at')[:5]
+        ).order_by('-created_at')[:10]
 
         history_text = ""
         for item in reversed(recent_history):
@@ -252,6 +266,9 @@ def ask(request):
         # ── General Medical Question ──
         else:
             answer, sources = ask_medibot(question, history=history_text)
+            suggestions = generate_followup_suggestions(question, q_lower)
+            if suggestions:
+                answer += f"\n\n---\n💡 **You might also ask:**\n{suggestions}"
 
         ChatHistory.objects.create(
             user=request.user,
